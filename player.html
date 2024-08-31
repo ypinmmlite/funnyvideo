@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hls.js Player with URL Parameter</title>
+    <style>
+        /* Add your custom styles here */
+    </style>
+</head>
+<body>
+
+    <div class='post-body post-content' id='post-body'>
+
+    <script src="https://cdn.jsdelivr.net/clappr/latest/clappr.min.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/clappr.level-selector/latest/level-selector.min.js" type="text/javascript"></script>
+    <div id="oper"></div>
+    <div id="vid"></div>
+    <script>
+        // Function to get the value of a URL parameter by name
+        function getParameterByName(name) {
+            const url = window.location.href;
+            const nameFormatted = name.replace(/[\[\]]/g, '\\$&');
+            const regex = new RegExp('[?&]' + nameFormatted + '(=([^&#]*)|&|#|$)');
+            const results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        // Get the 'url' parameter from the URL
+        const m3u8Url = getParameterByName('url');
+
+        if (m3u8Url) {
+            // Initialize the player with the provided M3U8 URL
+            const player = new Clappr.Player({
+                source: m3u8Url,
+                mimeType: "application/x-mpegURL",
+                autoPlay: true, 
+                height: "400",
+                width: "100%",
+                plugins: {"core": [LevelSelector]}, 
+                parentId: "#vid"
+            });
+        } else {
+            document.getElementById('vid').innerHTML = '<p>No valid M3U8 URL provided.</p>';
+        }
+    </script>
+    </div>
+
+</body>
+</html>
