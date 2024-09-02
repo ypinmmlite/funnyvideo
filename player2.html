@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title></title>
+    <style type="text/css">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      .dplayer-notice {
+        display: none;
+      }
+
+      .dplayer-setting {
+        display: none !important;
+      }
+
+      .dplayer-menu {
+        display: none !important;
+      }
+
+      .dplayer-full-in-icon {
+        display: none !important;
+      }
+      .dplayer-bar-wrap {
+        display: none !important;
+      }
+
+      body.h5 .dplayer-controller {
+        display: none !important;
+      }
+      body.h5 .dplayer-playing .dplayer-controller-mask,
+      body.h5 .dplayer-playing .dplayer-mobile-play {
+        display: none !important;
+      }
+      body.h5 .dplayer.dplayer-paused .dplayer-mobile-play {
+        display: block !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="dplayer"></div>
+    <script src="./js/flv.min.js"></script>
+    <script src="./js/hls.min.js"></script>
+    <script src="./js/DPlayer.min.js"></script>
+    <script>
+      var search = window.location.search || "";
+      var isH5 = search.indexOf("h5=1") > -1;
+      var muted = search.indexOf("muted") > -1;
+
+      if (isH5) {
+        document.body.setAttribute("class", "h5");
+      }
+      var dp;
+      function getQueryVariable(variable) {
+        var query = search.substring(1);
+        var arr = query.split("url=");
+        return arr[1];
+      }
+      var url = getQueryVariable("url") || "";
+
+      function getQuery(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const value = urlParams.get(name);
+        return value;
+      }
+
+      var autoplay = (() => {
+        const value = getQuery("autoplay");
+        if (value) {
+          return value === '1';
+        }
+        return true;
+      })();
+
+      console.info("autoplay", autoplay);
+
+      if (url.indexOf("m3u8") !== -1 || isH5) {
+        dp = new DPlayer({
+          container: document.getElementById("dplayer"),
+          autoplay: autoplay,
+          volume: muted ? 0 : 0.5,
+          video: {
+            autoplay: autoplay,
+            url:
+              url ||
+              "https://d2zihajmogu5jn.cloudfront.net/elephantsdream/hls/manifest5/index.m3u8",
+            type: "customHls",
+            customType: {
+              customHls: function (video, player) {
+                var hls = new Hls();
+                hls.loadSource(video.src);
+                hls.attachMedia(video);
+              },
+            },
+          },
+        });
+
+        if (muted) {
+          const videoDom = document.getElementsByClassName("dplayer-video");
+          if (videoDom) {
+            videoDom[0].muted = true;
+            videoDom[0].autoplay = autoplay;
+          }
+        }
+      } else if (url.indexOf("mp4") !== -1) {
+        dp = new DPlayer({
+          container: document.getElementById("dplayer"),
+          autoplay: autoplay,
+          volume: muted ? 0 : 0.5,
+          video: {
+            autoplay: autoplay,
+            url,
+            type: "auto",
+          },
+        });
+      } else {
+        dp = new DPlayer({
+          container: document.getElementById("dplayer"),
+          autoplay: autoplay,
+          volume: muted ? 0 : 0.5,
+          video: {
+            url: url || "https://hdl.jwjdsbei.com/live/ai666.flv",
+            type: "customFlv",
+            autoplay: autoplay,
+            customType: {
+              customFlv: function (video, player) {
+                var flvPlayer = flvjs.createPlayer({
+                  type: "flv",
+                  url: video.src,
+                });
+                flvPlayer.attachMediaElement(video);
+                flvPlayer.load();
+              },
+            },
+          },
+        });
+      }
+      if (dp) {
+        // play
+        // pause
+        [
+          {
+            eventName: "play",
+            type: "play",
+          },
+          {
+            eventName: "pause",
+            type: "pause",
+          },
+          {
+            eventName: "ended",
+            type: "pause",
+          },
+          {
+            eventName: "error",
+            type: "error",
+          },
+        ].forEach(function (i) {
+          dp.on(i.eventName, function (e) {
+            // iframe
+            window.parent.postMessage(
+              JSON.stringify({
+                type: i.type,
+                value: e,
+              }),
+              "*"
+            );
+          });
+        });
+      }
+
+      if (isH5) {
+        document.body.addEventListener("click", function (e) {
+          if (dp.paused) return;
+          window.parent.postMessage(
+            JSON.stringify({
+              type: "toggle",
+            }),
+            "*"
+          );
+        });
+      }
+
+      window.addEventListener("message", function (event) {
+        if (!event.data) return;
+        try {
+          var params = JSON.parse(event.data);
+          if (params.type === "switch") {
+            dp.switchVideo({
+              url: params.value,
+            });
+            dp.play();
+          }
+          if (params.type === "request-fullscreen") {
+            dp.fullScreen.request(params.value || "browser");
+          }
+          if (params.type === "cancel-fullscreen") {
+            dp.fullScreen.cancel(params.value || "browser");
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      });
+    </script>
+  </body>
+</html>
